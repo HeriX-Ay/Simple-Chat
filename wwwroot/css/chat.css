@@ -1,0 +1,271 @@
+/* ============================================
+   Chat page (Index)
+   Relies on variables defined in theme.css
+   ============================================ */
+
+#welcomeText {
+  color: var(--accent);
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+/* ---------- Chat window ---------- */
+.chat-window {
+  background-color: var(--bg-card);
+  color: var(--text-on-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  margin-bottom: 10px;
+  animation: fadeInUp 0.35s ease;
+}
+
+#chat {
+  /* Grows naturally with content (no fixed height) until it hits this
+     cap, at which point it becomes its own scrollable region - like
+     WhatsApp/Snapchat, instead of always being a fixed-size scroll box. */
+  height: auto;
+  max-height: 65vh;
+  min-height: 100px;
+  overflow-y: auto;
+  padding: 10px;
+  margin: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+}
+
+#chat li {
+  position: relative;
+  padding: 10px 14px;
+  margin: 5px 0;
+  border-radius: var(--radius-sm);
+  max-width: 70%;
+  animation: messageIn 0.25s ease;
+}
+
+.myMessage {
+  background-color: var(--chat-accent);
+  color: white;
+  align-self: flex-end;
+  text-align: right;
+  border-bottom-right-radius: 0;
+}
+
+.otherMessage {
+  background-color: var(--bg-hover);
+  color: white;
+  align-self: flex-start;
+  text-align: left;
+  border-bottom-left-radius: 0;
+}
+
+.messageText {
+  word-break: break-word;
+}
+
+.messageTime {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+#typing {
+  min-height: 1.4em;
+  margin: 4px 2px;
+  font-style: italic;
+  color: var(--chat-accent);
+  font-size: 13px;
+}
+
+/* ---------- Message input ---------- */
+.message-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.message-input-group input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #444;
+  background-color: var(--bg-input);
+  color: var(--text-on-card);
+  transition: border-color var(--transition-fast);
+}
+
+.message-input-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.message-input-group button {
+  padding: 10px 18px;
+  background-color: var(--button-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  
+}
+
+.message-input-group button:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Profile dropdown ---------- */
+.profile-button {
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+  margin-left: auto;
+}
+
+.dropdown-content {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+  position: absolute;
+  right: 0;
+  background-color: var(--menu-background);
+  min-width: 130px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.dropdown:hover .dropdown-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-content a {
+  display: block;
+  padding: 10px 14px;
+  color: var(--text-main);
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+
+.dropdown-content a:hover {
+  background-color: var(--bg-hover);
+}
+
+/* ---------- Logout overlay ---------- */
+.logout-animation {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: pageFade 0.2s ease;
+}
+
+.logout-box {
+  background: var(--bg-card);
+  padding: 30px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  color: var(--text-on-card);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #444;
+  border-top: 4px solid var(--accent);
+  border-radius: 50%;
+  margin: auto;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ---------- Reply / delete / read receipts ---------- */
+.reply-preview {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+  border-left: 2px solid rgba(255, 255, 255, 0.4);
+  padding-left: 6px;
+  margin-bottom: 4px;
+}
+
+.deletedMessage .messageText {
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+.messageMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.msg-icon {
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+.msg-icon:hover {
+  opacity: 1;
+}
+
+.read-tick {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.reply-preview-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--bg-card);
+  color: var(--text-on-card);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.reply-preview-bar button {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.reply-preview-bar button:hover {
+  color: var(--text-on-card);
+}
+
+/* ---------- Unread badge ---------- */
+.unread-badge {
+  background-color: var(--danger);
+  color: #1a1a1a;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 10px;
+  padding: 1px 6px;
+  margin-left: 4px;
+}
