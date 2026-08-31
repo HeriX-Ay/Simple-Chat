@@ -1,0 +1,92 @@
+@page "{username}"
+@model UserProfileModel
+@{
+    ViewData["Title"] = Model.Username;
+}
+
+<div class="content-card profile-card">
+    <div class="profile-avatar-row">
+        <partial name="_Avatar" model='new Simple_Chat.Data.AvatarViewModel(Model.Username, Model.AvatarUrl, "avatar-lg")' />
+    </div>
+
+    <h1>@@@Model.Username @(Model.IsPrivate ? "🔒" : "")</h1>
+
+    @if (!string.IsNullOrEmpty(Model.Bio))
+    {
+        <p style="color: var(--text-muted);">@Model.Bio</p>
+    }
+
+    <div class="profile-stats-row">
+        <div><strong>@Model.PostCount</strong><span>Posts</span></div>
+        <div><strong>@Model.FollowerCount</strong><span>Followers</span></div>
+        <div><strong>@Model.FollowingCount</strong><span>Following</span></div>
+    </div>
+
+    @if (Model.IsOwnProfile)
+    {
+        <div class="profile-actions-row">
+            <a class="btn-accent" asp-page="/Profile">Edit Profile</a>
+            <a class="btn-accent" asp-page="/Settings">Settings</a>
+        </div>
+    }
+    else
+    {
+        <form method="post" asp-page-handler="ToggleFollow" asp-route-username="@Model.Username">
+            <button type="submit" class="btn-accent">
+                @(Model.IsFollowing ? "Following ✓" : "Follow")
+            </button>
+        </form>
+    }
+</div>
+
+@if (!Model.CanViewContent)
+{
+    <div class="content-card" style="text-align:center;">
+        <p>🔒 This account is private.</p>
+        <p class="contacts-empty">Follow @@@Model.Username to see their posts.</p>
+    </div>
+}
+else
+{
+    <div class="profile-tabs">
+        <a class="profile-tab @(Model.ActiveTab == "posts" ? "active" : "")" asp-page="/UserProfile" asp-route-username="@Model.Username" asp-route-tab="posts">📋 Posts</a>
+        <a class="profile-tab @(Model.ActiveTab == "reposts" ? "active" : "")" asp-page="/UserProfile" asp-route-username="@Model.Username" asp-route-tab="reposts">🔁 Reposts</a>
+        <a class="profile-tab @(Model.ActiveTab == "likes" ? "active" : "")" asp-page="/UserProfile" asp-route-username="@Model.Username" asp-route-tab="likes">❤️ Likes</a>
+    </div>
+
+    
+        var activeList = Model.ActiveTab switch
+        {
+            "reposts" => Model.Reposts,
+            "likes" => Model.Likes,
+            _ => Model.Posts
+        };
+    
+
+    <div class="feed">
+        @if (!activeList.Any())
+        {
+            <p class="contacts-empty">Nothing here yet.</p>
+        }
+
+        @foreach (var post in activeList)
+        {
+            <a class="post-card profile-post-link" asp-page="/Post" asp-route-id="@post.Id">
+                <div class="post-header">
+                    <div class="post-avatar-row">
+                        <partial name="_Avatar" model='new Simple_Chat.Data.AvatarViewModel(post.AuthorUsername, post.AuthorAvatarUrl, "avatar-sm")' />
+                        <span class="post-author">@@@post.AuthorUsername</span>
+                    </div>
+                    <span class="post-time">@post.CreatedAt.ToLocalTime().ToString("MMM d, HH:mm")</span>
+                </div>
+                <div class="post-content">@post.Content</div>
+                <div class="post-actions">
+                    <span class="post-action">👁 @post.ViewCount</span>
+                    <span class="post-action">💬 @post.ReplyCount</span>
+                    <span class="post-action">🔁 @post.RepostCount</span>
+                    <span class="post-action">❤️ @post.LikeCount</span>
+                </div>
+            </a>
+        }
+    </div>
+}

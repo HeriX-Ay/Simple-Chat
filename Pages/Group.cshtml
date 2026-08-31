@@ -1,0 +1,175 @@
+@page "{id:int}"
+@model GroupModel
+@{
+    ViewData["Title"] = Model.GroupName;
+}
+
+<h1>@Model.GroupName</h1>
+<p class="contacts-empty">Members: @string.Join(", ", Model.Members)</p>
+<p><a asp-page="/Groups">&larr; Back to Groups</a></p>
+
+<div class="chat-window">
+    <ul id="chat">
+        @foreach (var msg in Model.History)
+        {
+            var sideClass = msg.Sender == Model.Username ? "myMessage" : "otherMessage";
+            <li class="@sideClass" data-id="@msg.Id">
+                @if (sideClass == "otherMessage")
+                {
+                    <div class="post-avatar-row" style="margin-bottom:4px;">
+                        <partial name="_Avatar" model='new Simple_Chat.Data.AvatarViewModel(msg.Sender, msg.SenderAvatarUrl, "avatar-sm")' />
+                        <span class="group-sender">@msg.Sender</span>
+                    </div>
+                }
+                <div class="messageText">@msg.Content</div>
+                @if (!string.IsNullOrEmpty(msg.MediaUrl))
+                {
+                    <div class="post-media">
+                        @if (msg.MediaType == "video")
+                        {
+                            <video controls src="@msg.MediaUrl"></video>
+                        }
+                        else
+                        {
+                            <img src="@msg.MediaUrl" alt="attached media" />
+                        }
+                    </div>
+                }
+                <div class="messageMeta"><span class="messageTime">@msg.SentAt.ToLocalTime().ToString("HH:mm")</span></div>
+            </li>
+        }
+    </ul>
+</div>
+
+<p id="typing"></p>
+
+<div class="message-input-group">
+    <label class="media-attach-btn">📎<input type="file" id="mediaInput" accept="image/*,video/*" style="display:none;" /></label>
+    <input id="message" placeholder="Type a message" autocomplete="off" />
+    <button id="sendBtn">➤</button>
+</div>
+<div id="fileNamePreview" class="contacts-empty" style="margin-top:4px;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script>
+    const currentUser = "@Model.Username";
+    const groupId = @Model.GroupId;
+
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/chatHub")
+        .build();
+
+    connection.start()
+        .then(() => connection.invoke("JoinGroupRoom", groupId, currentUser))
+        .catch(err => console.error(err));
+
+    const mediaInput = document.getElementById("mediaInput");
+    mediaInput.addEventListener("change", () => {
+        document.getElementById("fileNamePreview").textContent = mediaInput.files[0] ? mediaInput.files[0].name : "";
+    });
+
+    function buildMessageLi(id, sender, message, mediaUrl, mediaType, senderAvatarUrl) {
+        const isMine = sender === currentUser;
+        const sideClass = isMine ? "myMessage" : "otherMessage";
+
+        const li = document.createElement("li");
+        li.className = sideClass;
+        li.dataset.id = id;
+
+        let avatarImg = senderAvatarUrl
+            ? `<img class="avatar avatar-sm" src="${senderAvatarUrl}" alt="${sender}" />`
+            : `<div class="avatar avatar-initials avatar-sm">${(sender || "?").charAt(0).toUpperCase()}</div>`;
+        const senderHtml = isMine ? "" : `<div class="post-avatar-row" style="margin-bottom:4px;">${avatarImg}<span class="group-sender"></span></div>`;
+        let mediaHtml = "";
+        if (mediaUrl) {
+            mediaHtml = mediaType === "video"
+                ? `<div class="post-media"><video controls src="${mediaUrl}"></video></div>`
+                : `<div class="post-media"><img src="${mediaUrl}" alt="attached media" /></div>`;
+        }
+
+        const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        li.innerHTML = `
+            ${senderHtml}
+            <div class="messageText"></div>
+            ${mediaHtml}
+            <div class="messageMeta"><span class="messageTime">${time}</span></div>
+        `;
+        if (!isMine) li.querySelector(".group-sender").textContent = sender;
+        
+        li.querySelector(".messageText").textContent = message;
+        return li;
+    }
+
+    connection.on("ReceiveGroupMessage", (sender, message, id, mediaUrl, mediaType, senderAvatarUrl) => {
+        const chatBox = document.getElementById("chat");
+        chatBox.appendChild(buildMessageLi(id, sender, message, mediaUrl, mediaType, senderAvatarUrl));
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    async function uploadMedia(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch(window.location.pathname + "?handler=UploadMedia", {
+            method: "POST",
+            body: formData
+        });
+        if (!response.ok) {
+            alert("Could not upload file (unsupported type or too large).");
+            return null;
+        }
+        return await response.json();
+    }
+
+    async function sendMessage() {
+        const messageBox = document.getElementById("message");
+        const message = messageBox.value.trim();
+        const file = mediaInput.files[0];
+
+        if (message === "" && !file) return;
+
+        let mediaUrl = null, mediaType = null;
+        if (file) {
+            const result = await uploadMedia(file);
+            if (result) {
+                mediaUrl = result.url;
+                mediaType = result.type;
+            }
+        }
+
+        connection.invoke("SendGroupMessage", groupId, currentUser, message, mediaUrl, mediaType)
+            .catch(err => console.error(err));
+
+        messageBox.value = "";
+        mediaInput.value = "";
+        document.getElementById("fileNamePreview").textContent = "";
+        connection.invoke("StopGroupTyping", groupId);
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+
+    document.getElementById("message").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    let typingTimer;
+    document.getElementById("message").addEventListener("input", () => {
+        connection.invoke("GroupTyping", groupId, currentUser);
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => connection.invoke("StopGroupTyping", groupId), 1000);
+    });
+
+    connection.on("GroupUserTyping", (user) => {
+        document.getElementById("typing").innerText = user + " is typing...";
+    });
+
+    connection.on("GroupStopTyping", () => {
+        document.getElementById("typing").innerText = "";
+    });
+
+    const chatBox = document.getElementById("chat");
+    chatBox.scrollTop = chatBox.scrollHeight;
+</script>

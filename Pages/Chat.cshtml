@@ -1,0 +1,281 @@
+@page "{with?}"
+@model ChatModel
+@{
+    ViewData["Title"] = $"Chat with {Model.With}";
+}
+
+<div class="post-avatar-row" style="margin-bottom:10px;">
+    <partial name="_Avatar" model='new Simple_Chat.Data.AvatarViewModel(Model.With, Model.WithAvatarUrl, "avatar-md")' />
+    <h1 style="margin:0;">Chat with @Model.With</h1>
+</div>
+<p><a asp-page="/Contacts">&larr; Back to Contacts</a></p>
+
+<div class="chat-window">
+    <ul id="chat">
+        @foreach (var msg in Model.History)
+        {
+            var sideClass = msg.Sender == Model.Username ? "myMessage" : "otherMessage";
+            <li class="@sideClass @(msg.IsDeletedForEveryone ? "deletedMessage" : "")"
+                data-id="@msg.Id"
+                data-author="@msg.Sender"
+                data-content="@msg.Content">
+
+                @if (!string.IsNullOrEmpty(msg.ReplyToAuthor))
+                {
+                    <div class="reply-preview">↩ @msg.ReplyToAuthor: @msg.ReplyToSnippet</div>
+                }
+
+                <div class="messageText">@msg.Content</div>
+
+                @if (!string.IsNullOrEmpty(msg.MediaUrl))
+                {
+                    <div class="post-media">
+                        @if (msg.MediaType == "video")
+                        {
+                            <video controls src="@msg.MediaUrl"></video>
+                        }
+                        else
+                        {
+                            <img src="@msg.MediaUrl" alt="attached media" />
+                        }
+                    </div>
+                }
+
+                <div class="messageMeta">
+                    @if (!msg.IsDeletedForEveryone)
+                    {
+                        <span class="msg-icon reply-icon" title="Reply">↩</span>
+                        @if (sideClass == "myMessage")
+                        {
+                            <span class="msg-icon delete-icon" title="Delete">🗑</span>
+                        }
+                    }
+                    <span class="messageTime">@msg.SentAt.ToLocalTime().ToString("HH:mm")</span>
+                    @if (sideClass == "myMessage")
+                    {
+                        <span class="read-tick">@(msg.IsRead ? "✓✓" : "✓")</span>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+</div>
+
+<p id="typing"></p>
+
+<div id="replyPreviewBar" class="reply-preview-bar" style="display:none;">
+    <span id="replyPreviewText"></span>
+    <button id="cancelReply">✕</button>
+</div>
+
+<div class="message-input-group">
+    <label class="media-attach-btn">📎<input type="file" id="mediaInput" accept="image/*,video/*" style="display:none;" /></label>
+    <input id="message" placeholder="Type a message" autocomplete="off" />
+    <button id="sendBtn">➤</button>
+</div>
+<div id="fileNamePreview" class="contacts-empty" style="margin-top:4px;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+<script>
+    const currentUser = "@Model.Username";
+    const otherUser = "@Model.With";
+    let replyingTo = null; // { id, author, snippet }
+    const mediaInput = document.getElementById("mediaInput");
+    mediaInput.addEventListener("change", () => {
+        document.getElementById("fileNamePreview").textContent = mediaInput.files[0] ? mediaInput.files[0].name : "";
+    });
+
+    async function uploadMedia(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch(window.location.pathname + "?handler=UploadMedia", {
+            method: "POST",
+            body: formData
+        });
+        if (!response.ok) {
+            alert("Could not upload file (unsupported type or too large).");
+            return null;
+        }
+        return await response.json();
+    }
+
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/chatHub")
+        .build();
+
+    connection.start()
+        .then(() => {
+            connection.invoke("JoinPrivateRoom", currentUser, otherUser);
+            connection.invoke("MarkMessagesRead", currentUser, otherUser);
+        })
+        .catch(err => console.error(err));
+
+    function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function buildMessageLi(id, sender, message, replyAuthor, replySnippet, mediaUrl, mediaType) {
+        const isMine = sender === currentUser;
+        const sideClass = isMine ? "myMessage" : "otherMessage";
+
+        const li = document.createElement("li");
+        li.className = sideClass;
+        li.dataset.id = id;
+        li.dataset.author = sender;
+        li.dataset.content = message;
+
+        let replyHtml = "";
+        if (replyAuthor) {
+            replyHtml = `<div class="reply-preview">↩ ${escapeHtml(replyAuthor)}: ${escapeHtml(replySnippet || "")}</div>`;
+        }
+
+        let mediaHtml = "";
+        if (mediaUrl) {
+            mediaHtml = mediaType === "video"
+                ? `<div class="post-media"><video controls src="${mediaUrl}"></video></div>`
+                : `<div class="post-media"><img src="${mediaUrl}" alt="attached media" /></div>`;
+        }
+
+        let iconsHtml = `<span class="msg-icon reply-icon" title="Reply">↩</span>`;
+        if (isMine) {
+            iconsHtml += `<span class="msg-icon delete-icon" title="Delete">🗑</span>`;
+        }
+
+        const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const tickHtml = isMine ? `<span class="read-tick">✓</span>` : "";
+
+        li.innerHTML = `
+            ${replyHtml}
+            <div class="messageText"></div>
+            ${mediaHtml}
+            <div class="messageMeta">${iconsHtml}<span class="messageTime">${time}</span>${tickHtml}</div>
+        `;
+        li.querySelector(".messageText").textContent = message;
+        return li;
+    }
+
+    connection.on("ReceivePrivateMessage", (sender, message, id, replyToId, replyAuthor, replySnippet, mediaUrl, mediaType) => {
+        const chatBox = document.getElementById("chat");
+        const li = buildMessageLi(id, sender, message, replyAuthor, replySnippet, mediaUrl, mediaType);
+        chatBox.appendChild(li);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // If I'm the recipient and I'm looking at the chat, mark it read immediately
+        if (sender !== currentUser) {
+            connection.invoke("MarkMessagesRead", currentUser, otherUser);
+        }
+    });
+
+    connection.on("MessageDeleted", (messageId) => {
+        const li = document.querySelector(`#chat li[data-id="${messageId}"]`);
+        if (li) {
+            li.classList.add("deletedMessage");
+            li.querySelector(".messageText").textContent = "This message was deleted";
+            li.querySelectorAll(".reply-icon, .delete-icon").forEach(el => el.remove());
+        }
+    });
+
+    connection.on("MessageRemovedForMe", (messageId) => {
+        const li = document.querySelector(`#chat li[data-id="${messageId}"]`);
+        if (li) li.remove();
+    });
+
+    connection.on("MessagesRead", (readerUsername) => {
+        if (readerUsername === currentUser) return; // I marked my own inbox read, ignore
+        document.querySelectorAll('#chat li.myMessage .read-tick').forEach(el => el.textContent = "✓✓");
+    });
+
+    async function sendMessage() {
+        const messageBox = document.getElementById("message");
+        const message = messageBox.value.trim();
+        const file = mediaInput.files[0];
+
+        if (message === "" && !file) return;
+
+        let mediaUrl = null, mediaType = null;
+        if (file) {
+            const result = await uploadMedia(file);
+            if (result) {
+                mediaUrl = result.url;
+                mediaType = result.type;
+            }
+        }
+
+        const replyId = replyingTo ? replyingTo.id : null;
+        connection.invoke("SendPrivateMessage", currentUser, otherUser, message, replyId, mediaUrl, mediaType)
+            .catch(err => console.error(err));
+
+        messageBox.value = "";
+        mediaInput.value = "";
+        document.getElementById("fileNamePreview").textContent = "";
+        clearReply();
+        connection.invoke("StopPrivateTyping", currentUser, otherUser);
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+
+    document.getElementById("message").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    let typingTimer;
+    document.getElementById("message").addEventListener("input", () => {
+        connection.invoke("PrivateTyping", currentUser, otherUser);
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => connection.invoke("StopPrivateTyping", currentUser, otherUser), 1000);
+    });
+
+    connection.on("PrivateUserTyping", (user) => {
+        document.getElementById("typing").innerText = user + " is typing...";
+    });
+
+    connection.on("PrivateStopTyping", () => {
+        document.getElementById("typing").innerText = "";
+    });
+
+    // ---------- Reply & delete (event delegation covers both server-rendered and live messages) ----------
+
+    function setReply(id, author, content) {
+        replyingTo = { id: parseInt(id), author, snippet: content.length > 60 ? content.slice(0, 60) + "…" : content };
+        document.getElementById("replyPreviewText").textContent = `Replying to ${author}: ${replyingTo.snippet}`;
+        document.getElementById("replyPreviewBar").style.display = "flex";
+        document.getElementById("message").focus();
+    }
+
+    function clearReply() {
+        replyingTo = null;
+        document.getElementById("replyPreviewBar").style.display = "none";
+    }
+
+    document.getElementById("cancelReply").addEventListener("click", clearReply);
+
+    document.getElementById("chat").addEventListener("click", (e) => {
+        const li = e.target.closest("li[data-id]");
+        if (!li) return;
+        const id = li.dataset.id;
+        const author = li.dataset.author;
+        const content = li.dataset.content;
+
+        if (e.target.classList.contains("reply-icon")) {
+            setReply(id, author, content);
+        }
+
+        if (e.target.classList.contains("delete-icon")) {
+            const everyone = confirm("Delete for everyone? Click OK to delete for everyone, or Cancel to delete just for you.");
+            if (everyone) {
+                connection.invoke("DeleteForEveryone", parseInt(id), currentUser);
+            } else {
+                connection.invoke("DeleteForMe", parseInt(id), currentUser);
+            }
+        }
+    });
+
+    // Scroll to the latest message on load
+    const chatBox = document.getElementById("chat");
+    chatBox.scrollTop = chatBox.scrollHeight;
+</script>

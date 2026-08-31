@@ -1,0 +1,44 @@
+@page
+@model ProfileModel
+@{
+    ViewData["Title"] = "Profile";
+}
+
+<div class="content-card profile-card">
+    <h1>Your Profile</h1>
+
+    <div class="profile-avatar-row">
+        <partial name="_Avatar" model='new Simple_Chat.Data.AvatarViewModel(Model.Username, Model.AvatarUrl, "avatar-lg")' />
+        <div>
+            <div class="post-author" style="font-size:18px;">@@@Model.Username</div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <p class="auth-message" style="text-align:left;">@Model.Message</p>
+    }
+
+    <form method="post" asp-page-handler="Upload" enctype="multipart/form-data" style="margin-top:15px;">
+        <input type="file" name="AvatarFile" accept="image/*" required />
+        <button type="submit" class="btn-accent" style="margin-top:10px;">📷 Upload New Avatar</button>
+    </form>
+
+    @if (!string.IsNullOrEmpty(Model.AvatarUrl))
+    {
+        <form method="post" asp-page-handler="Remove" style="margin-top:8px;">
+            <button type="submit" class="btn-decline">🗑 Remove Avatar</button>
+        </form>
+    }
+
+    <h6 style="margin-top:25px;">📝 Bio</h6>
+    <form method="post" asp-page-handler="SaveBio">
+        <textarea asp-for="Bio" placeholder="Tell people about yourself..." maxlength="150" rows="3"
+                  style="width:100%; padding:12px; border-radius:var(--radius-sm); border:1px solid #444; background-color:var(--bg-input); color:var(--text-on-card); font-family:var(--font-body); resize:vertical;"></textarea>
+        <button type="submit" class="btn-accent" style="margin-top:10px;">Save Bio</button>
+    </form>
+
+    <p style="margin-top:20px;">
+        <a asp-page="/UserProfile" asp-route-username="@Model.Username">View my public profile &rarr;</a>
+    </p>
+</div>

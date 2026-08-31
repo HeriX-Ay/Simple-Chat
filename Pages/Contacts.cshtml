@@ -1,0 +1,74 @@
+@page
+@model ContactsModel
+@{
+    ViewData["Title"] = "Contacts";
+}
+
+<div class="content-card contacts-card">
+    <h1>Contacts</h1>
+
+    <form method="post" asp-page-handler="AddFriend" class="add-friend-form">
+        <input asp-for="SearchUsername" placeholder="Add a friend by username" autocomplete="off" />
+        <button type="submit">Add</button>
+    </form>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <p class="contacts-message">@Model.Message</p>
+    }
+
+    @if (Model.IncomingRequests.Any())
+    {
+        <h6>📥 Friend Requests</h6>
+        <ul class="contact-list">
+            @foreach (var request in Model.IncomingRequests)
+            {
+                <li class="contact-row">
+                    <span>@request.Username</span>
+                    <span class="contact-actions">
+                        <form method="post" asp-page-handler="Accept" class="inline-form">
+                            <input type="hidden" name="friendshipId" value="@request.FriendshipId" />
+                            <button type="submit" class="btn-accent btn-sm">Accept</button>
+                        </form>
+                        <form method="post" asp-page-handler="Decline" class="inline-form">
+                            <input type="hidden" name="friendshipId" value="@request.FriendshipId" />
+                            <button type="submit" class="btn-decline btn-sm">Decline</button>
+                        </form>
+                    </span>
+                </li>
+            }
+        </ul>
+    }
+
+    <h6>👥 Friends</h6>
+    @if (Model.Friends.Any())
+    {
+        <ul class="contact-list">
+            @foreach (var friend in Model.Friends)
+            {
+                <li class="contact-row">
+                    <a class="post-avatar-row profile-link" asp-page="/UserProfile" asp-route-username="@friend.Username">
+                        <partial name="_Avatar" model='new Simple_Chat.Data.AvatarViewModel(friend.Username, friend.AvatarUrl, "avatar-sm")' />
+                        @friend.Username
+                    </a>
+                    <a class="btn-accent btn-sm" asp-page="/Chat" asp-route-with="@friend.Username">Chat</a>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p class="contacts-empty">No friends yet — add someone above.</p>
+    }
+
+    @if (Model.OutgoingRequests.Any())
+    {
+        <h6>📤 Pending Requests Sent</h6>
+        <ul class="contact-list">
+            @foreach (var username in Model.OutgoingRequests)
+            {
+                <li class="contact-row"><span>@username</span><span class="text-muted">waiting...</span></li>
+            }
+        </ul>
+    }
+</div>

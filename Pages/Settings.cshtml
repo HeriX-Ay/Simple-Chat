@@ -1,0 +1,42 @@
+@page
+@model SettingsModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="content-card">
+    <h1>⚙️ Settings</h1>
+
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <p class="contacts-message">@Model.Message</p>
+    }
+
+    <h6>👤 Account</h6>
+    <p style="color: var(--text-muted);">
+        Signed in as <strong>@@@Model.Username</strong> (@Model.Email)
+    </p>
+
+    <h6>🔒 Privacy</h6>
+    <div class="contact-row" style="align-items:flex-start;">
+        <div style="max-width: 75%;">
+            <strong>Private account</strong>
+            <p class="contacts-empty" style="margin:4px 0 0;">
+                When on, only people who follow you can see your posts on your profile.
+                Your feed posts are still visible in the public feed either way.
+            </p>
+        </div>
+        <form method="post" asp-page-handler="TogglePrivacy">
+            <button type="submit" class="btn-accent btn-sm">
+                @(Model.IsPrivate ? "Turn Off" : "Turn On")
+            </button>
+        </form>
+    </div>
+
+    <h6>🔗 Quick Links</h6>
+    <ul class="contact-list">
+        <li class="contact-row"><a asp-page="/Profile">Edit Profile &amp; Avatar</a></li>
+        <li class="contact-row"><a asp-page="/UserProfile" asp-route-username="@Model.Username">View My Public Profile</a></li>
+        <li class="contact-row"><a asp-page="/Privacy">Privacy Policy</a></li>
+    </ul>
+</div>

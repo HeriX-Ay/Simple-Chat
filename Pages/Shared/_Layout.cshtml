@@ -1,0 +1,201 @@
+@using Microsoft.EntityFrameworkCore
+@using Simple_Chat.Data
+@inject AppDbContext Db
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>@ViewData["Title"] - Simple Chat</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/theme.css" />
+    <link rel="stylesheet" href="~/css/auth.css" />
+    <link rel="stylesheet" href="~/css/chat.css" />
+</head>
+<body class="@(string.IsNullOrEmpty(Context.Session.GetString("Username")) ? "" : "has-bottom-nav")">
+
+<div id="splash" class="opening-splash">
+    <div class="splash-logo">💬</div>
+    <div class="splash-text">Simple Chat</div>
+</div>
+<script>
+    (function () {
+        var splash = document.getElementById("splash");
+        if (sessionStorage.getItem("splashShown")) {
+            splash.remove();
+        } else {
+            sessionStorage.setItem("splashShown", "1");
+            setTimeout(function () { splash.remove(); }, 1400);
+        }
+    })();
+</script>
+
+@{
+    var myUsername = Context.Session.GetString("Username");
+    var isSignedIn = !string.IsNullOrEmpty(myUsername);
+    string? myAvatarUrl = null;
+
+    if (isSignedIn)
+    {
+        var myId = Context.Session.GetInt32("UserId");
+        if (myId is not null)
+        {
+            myAvatarUrl = await Db.Users.Where(u => u.Id == myId).Select(u => u.AvatarUrl).FirstOrDefaultAsync();
+        }
+    }
+
+    var unreadCount = isSignedIn
+        ? await Db.PrivateMessages.CountAsync(m => m.ReceiverId == Context.Session.GetInt32("UserId") && !m.IsRead)
+        : 0;
+
+    var currentPath = Context.Request.Path.Value ?? "";
+    var isFeedActive = currentPath == "/" || currentPath.StartsWith("/Index") || currentPath.StartsWith("/Post");
+    var isGroupsActive = currentPath.StartsWith("/Group");
+    var isContactsActive = currentPath.StartsWith("/Contacts") || currentPath.StartsWith("/Chat");
+}
+
+<header>
+    <nav class="navbar navbar-expand mb-3">
+        <div class="container app-navbar-inner">
+
+            @if (isSignedIn)
+            {
+                <div class="dropdown">
+                    <button class="navbar-toggler" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark">
+                        <li><a class="dropdown-item" asp-page="/Privacy">🔒 Privacy</a></li>
+                        <li><a class="dropdown-item" asp-page="/Settings">⚙️ Settings</a></li>
+                    </ul>
+                </div>
+            }
+
+            <a class="navbar-brand" asp-page="/Index">💬 Simple Chat</a>
+
+            @if (isSignedIn)
+            {
+                <div class="dropdown app-profile-dropdown">
+                    <button class="profile-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Profile menu">
+                        <partial name="_Avatar" model='new AvatarViewModel(myUsername!, myAvatarUrl, "avatar-sm")' />
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+                        <li><a class="dropdown-item" asp-page="/UserProfile" asp-route-username="@myUsername">👤 My Profile</a></li>
+                        <li><a class="dropdown-item" asp-page="/Profile">🖊 Edit Profile</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" href="#" onclick="logoutUser()">🚪 Log Out</a></li>
+                    </ul>
+                </div>
+            }
+            else
+            {
+                <div class="app-guest-links">
+                    @if (currentPath.StartsWith("/SignIn"))
+                    {
+                        <a class="nav-link" asp-page="/SignUp">📝 Sign Up</a>
+                    }
+                    else if (currentPath.StartsWith("/SignUp"))
+                    {
+                        <a class="nav-link" asp-page="/SignIn">🔑 Sign In</a>
+                    }
+                    else
+                    {
+                        <a class="nav-link" asp-page="/SignIn">🔑 Sign In</a>
+                    }
+                </div>
+            }
+        </div>
+    </nav>
+</header>
+
+<div class="container">
+    <main role="main" class="pb-3">
+        @RenderBody()
+    </main>
+</div>
+
+@if (isSignedIn)
+{
+    <nav class="bottom-tab-bar" id="bottomTabBar">
+        <a class="bottom-tab @(isFeedActive ? "active" : "")" asp-page="/Index">
+            <span class="bottom-tab-icon">📰</span>
+            <span class="bottom-tab-label">Feed</span>
+        </a>
+        <a class="bottom-tab @(isGroupsActive ? "active" : "")" asp-page="/Groups">
+            <span class="bottom-tab-icon">👥</span>
+            <span class="bottom-tab-label">Groups</span>
+        </a>
+        <a class="bottom-tab @(isContactsActive ? "active" : "")" asp-page="/Contacts">
+            <span class="bottom-tab-icon">
+                📇
+                <span id="bottomTabBadge" class="unread-badge bottom-tab-badge" style="@(unreadCount > 0 ? "" : "display:none;")">@unreadCount</span>
+            </span>
+            <span class="bottom-tab-label">Contacts</span>
+        </a>
+    </nav>
+
+    <div id="liveToast" class="live-toast"></div>
+}
+
+@if (isSignedIn)
+{
+    <div id="logoutAnimation" class="logout-animation">
+        <div class="logout-box">
+            <div class="spinner"></div>
+            <p>Logging out...</p>
+        </div>
+    </div>
+}
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    function logoutUser() {
+        document.getElementById("logoutAnimation").style.display = "flex";
+        setTimeout(() => window.location.href = "/Logout", 1200);
+    }
+</script>
+
+@if (isSignedIn)
+{
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <script>
+        // A single lightweight connection kept alive on every page while signed
+        // in, purely so the unread-messages badge (and a small toast for new
+        // friend requests) update live without needing to refresh the page.
+        (function () {
+            const currentUser = "@myUsername";
+            const notifyConnection = new signalR.HubConnectionBuilder().withUrl("/chatHub").build();
+
+            notifyConnection.start()
+                .then(() => notifyConnection.invoke("JoinUserNotifications", currentUser))
+                .catch(err => console.error(err));
+
+            function showToast(text) {
+                const toast = document.getElementById("liveToast");
+                if (!toast) return;
+                toast.textContent = text;
+                toast.classList.add("show");
+                setTimeout(() => toast.classList.remove("show"), 3500);
+            }
+
+            notifyConnection.on("NewMessageNotification", (fromUser) => {
+                const badge = document.getElementById("bottomTabBadge");
+                if (badge) {
+                    const current = parseInt(badge.textContent || "0", 10) || 0;
+                    badge.textContent = current + 1;
+                    badge.style.display = "";
+                }
+                showToast("💬 New message from " + fromUser);
+            });
+
+            notifyConnection.on("NewFriendRequestNotification", (fromUser) => {
+                showToast("👋 " + fromUser + " sent you a friend request");
+            });
+        })();
+    </script>
+}
+
+</body>
+</html>

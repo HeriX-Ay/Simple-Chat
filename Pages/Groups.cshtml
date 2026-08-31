@@ -1,0 +1,54 @@
+@page
+@model GroupsModel
+@{
+    ViewData["Title"] = "Groups";
+}
+
+<div class="content-card contacts-card">
+    <h1>Groups</h1>
+
+    <h6>➕ Create a Group</h6>
+    <form method="post" asp-page-handler="Create">
+        <input asp-for="NewGroupName" placeholder="Group name" autocomplete="off" style="margin-bottom:10px;" />
+
+        @if (Model.Friends.Any())
+        {
+            <p class="contacts-empty" style="margin-bottom:6px;">Add friends to the group:</p>
+            <ul class="contact-list">
+                @foreach (var friend in Model.Friends)
+                {
+                    <li class="contact-row">
+                        <label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
+                            <input type="checkbox" name="SelectedFriends" value="@friend" />
+                            @friend
+                        </label>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="contacts-empty">Add some friends first to invite them to a group.</p>
+        }
+
+        <button type="submit" class="btn-accent" style="margin-top:10px;">Create Group</button>
+    </form>
+
+    <h6 style="margin-top:25px;">👥 Your Groups</h6>
+    @if (Model.MyGroups.Any())
+    {
+        <ul class="contact-list">
+            @foreach (var group in Model.MyGroups)
+            {
+                <li class="contact-row">
+                    <span>@group.Name <span class="text-muted">(@group.MemberCount members)</span></span>
+                    <a class="btn-accent btn-sm" asp-page="/Group" asp-route-id="@group.Id">Open</a>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p class="contacts-empty">You're not in any groups yet.</p>
+    }
+</div>

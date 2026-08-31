@@ -1,0 +1,12 @@
+@model Simple_Chat.Data.AvatarViewModel
+@{
+    var initial = !string.IsNullOrEmpty(Model.Username) ? Model.Username.Substring(0, 1).ToUpper() : "?";
+}
+@if (!string.IsNullOrEmpty(Model.AvatarUrl))
+{
+    <img class="avatar @Model.SizeClass" src="@Model.AvatarUrl" alt="@Model.Username" />
+}
+else
+{
+    <div class="avatar avatar-initials @Model.SizeClass">@initial</div>
+}

@@ -1,0 +1,22 @@
+@page
+@model SignInModel
+@{
+    ViewData["Title"] = "Sign In";
+}
+
+<div class="page-decoration-top"></div>
+<div class="page-decoration-bottom"></div>
+
+<div class="auth-container">
+    <div class="chat-logo">💬</div>
+    <h1>Welcome Back</h1>
+    <p class="auth-subtitle">Sign in to continue chatting</p>
+
+    <form method="post">
+        <input asp-for="Username" placeholder="Username" />
+        <input asp-for="Password" type="password" placeholder="Password" />
+        <button type="submit">Sign In</button>
+    </form>
+
+    <p class="auth-message">@Model.Message</p>
+</div>

@@ -1,0 +1,84 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Feed";
+}
+
+<h1>Public Feed</h1>
+
+<div class="compose-box">
+    <form method="post" asp-page-handler="Compose" enctype="multipart/form-data">
+        <textarea asp-for="NewPostContent" placeholder="What's happening, @Model.Username?" maxlength="500"></textarea>
+        <div class="compose-actions">
+            <label class="media-attach-btn">
+                📎 <input type="file" name="MediaFile" accept="image/*,video/*" style="display:none;" onchange="this.parentElement.nextElementSibling.querySelector('.file-name').textContent = this.files[0] ? this.files[0].name : ''" />
+            </label>
+            <span class="compose-spacer"><span class="file-name"></span></span>
+            <button type="submit">Post</button>
+        </div>
+    </form>
+</div>
+
+<div class="feed">
+    @if (!Model.Feed.Any())
+    {
+        <p class="contacts-empty">No posts yet — be the first to say something.</p>
+    }
+
+    @foreach (var post in Model.Feed)
+    {
+        <div class="post-card">
+            @if (!string.IsNullOrEmpty(post.RepostedByUsername))
+            {
+                <div class="repost-tag">🔁 @post.RepostedByUsername reposted</div>
+            }
+
+            <div class="post-header">
+                <a class="post-avatar-row profile-link" asp-page="/UserProfile" asp-route-username="@post.AuthorUsername">
+                    <partial name="_Avatar" model='new Simple_Chat.Data.AvatarViewModel(post.AuthorUsername, post.AuthorAvatarUrl, "avatar-sm")' />
+                    <span class="post-author">@@@post.AuthorUsername</span>
+                </a>
+                <span class="post-time">@post.CreatedAt.ToLocalTime().ToString("MMM d, HH:mm")</span>
+            </div>
+
+            @if (!string.IsNullOrEmpty(post.ReplyingToUsername))
+            {
+                <div class="reply-tag">Replying to @@@post.ReplyingToUsername</div>
+            }
+
+            <div class="post-content">@post.Content</div>
+
+            @if (!string.IsNullOrEmpty(post.MediaUrl))
+            {
+                <div class="post-media">
+                    @if (post.MediaType == "video")
+                    {
+                        <video controls src="@post.MediaUrl"></video>
+                    }
+                    else
+                    {
+                        <img src="@post.MediaUrl" alt="attached media" />
+                    }
+                </div>
+            }
+
+            <div class="post-actions">
+                <a class="post-action" asp-page="/Post" asp-route-id="@post.Id">💬 @post.ReplyCount</a>
+
+                <form method="post" asp-page-handler="ToggleRepost" class="inline-form">
+                    <input type="hidden" name="postId" value="@post.Id" />
+                    <button type="submit" class="post-action @(post.IsRepostedByMe ? "active-repost" : "")">
+                        🔁 @post.RepostCount
+                    </button>
+                </form>
+
+                <form method="post" asp-page-handler="ToggleLike" class="inline-form">
+                    <input type="hidden" name="postId" value="@post.Id" />
+                    <button type="submit" class="post-action @(post.IsLikedByMe ? "active-like" : "")">
+                        @(post.IsLikedByMe ? "❤️" : "🤍") @post.LikeCount
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+</div>

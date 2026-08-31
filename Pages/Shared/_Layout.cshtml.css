@@ -1,0 +1,8 @@
+﻿/* Scoped styles for _Layout.cshtml.
+   Shared theme lives in wwwroot/css/theme.css. */
+
+a.navbar-brand {
+    white-space: normal;
+    text-align: center;
+    word-break: break-all;
+}

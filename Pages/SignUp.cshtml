@@ -1,0 +1,25 @@
+@page
+@model SignUpModel
+@{
+    ViewData["Title"] = "Sign Up";
+}
+
+<div class="page-decoration-top"></div>
+<div class="page-decoration-bottom"></div>
+
+<div class="auth-container">
+    <div class="chat-logo">💬</div>
+    <h1>Create Account</h1>
+    <p class="auth-subtitle">Join the conversation</p>
+
+    <form method="post">
+        <input asp-for="Username" placeholder="Username" autocomplete="username" maxlength="20" />
+        <input asp-for="Email" type="email" placeholder="Email" autocomplete="email" />
+        <input asp-for="Password" type="password" placeholder="Password (min. 8 characters)" autocomplete="new-password" />
+        <input asp-for="ConfirmPassword" type="password" placeholder="Confirm Password" autocomplete="new-password" />
+        <textarea asp-for="Bio" placeholder="Bio (optional)" maxlength="150" rows="2" style="width:100%; padding:12px; margin-bottom:15px; border-radius:var(--radius-sm); border:1px solid #444; background-color:var(--bg-input); color:var(--text-on-card); font-family:var(--font-body); resize:vertical;"></textarea>
+        <button type="submit">Sign Up</button>
+    </form>
+
+    <p class="auth-message">@Model.Message</p>
+</div>

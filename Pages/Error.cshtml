@@ -1,0 +1,21 @@
+@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+
+<div class="content-card" style="text-align:center;">
+    <h1>⚠️ Something went wrong</h1>
+    <p style="color: var(--text-muted);">
+        Sorry about that — an unexpected error occurred. It's been logged, and there's nothing
+        wrong on your end.
+    </p>
+    <a class="btn-accent" asp-page="/Index" style="display:inline-block; text-decoration:none; margin-top:15px;">Back to Feed</a>
+
+    @if (Model.ShowRequestId)
+    {
+        <p style="color: var(--text-faint); font-size: 12px; margin-top:20px;">
+            Reference: <code>@Model.RequestId</code>
+        </p>
+    }
+</div>
