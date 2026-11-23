@@ -1,5 +1,5 @@
 # Simple-Chat
-If the code doesn't run on Visual studio try Visual studio Code
+Link to the web application: https://simple-chat-tnnk.onrender.com
 Overview
 Simple Chat is a social‑media‑style messaging application where users can send and receive messages instantly.
 It was built as part of my software development learning journey, focusing on:
